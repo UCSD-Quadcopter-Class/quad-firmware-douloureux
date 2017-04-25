@@ -14,10 +14,12 @@ int throttle_val_temp = 0;
 int roll_val_temp = 0;
 int pitch_val_temp = 0;
 
+serLCD lcd;
+
 void setup()
 
 {
-
+  
   Serial.begin(9600);          //  setup serial
 
 }
@@ -25,8 +27,8 @@ void setup()
 void loop()
 
 {
-
-  yaw_val_temp = analogRead(yaw); 
+  lcd.print("I love BJ KIM");
+  /*yaw_val_temp = analogRead(yaw); 
   throttle_val_temp = analogRead(throttle);    
   roll_val_temp = analogRead(roll);    
   pitch_val_temp = analogRead(pitch);    
@@ -38,5 +40,6 @@ void loop()
 //    Serial.print("roll_val: "); Serial.println(roll_val); 
 //    Serial.print("pitch vale: " ); Serial.println(pitch_val);  
   } 
+  */
 
 }
