@@ -20,10 +20,10 @@ int throttle_max = 0;
 int roll_max = 0;
 int pitch_max = 0; 
 
-int yaw_min = 0;
-int throttle_min = 0;
-int roll_min = 0;
-int pitch_min = 0;
+int yaw_min = 500;
+int throttle_min = 500;
+int roll_min = 500;
+int pitch_min = 500;
 
 int yaw_d = 0;
 int throttle_d = 0;
@@ -66,15 +66,17 @@ void loop()
   roll_d = roll_max - roll_min;
   pitch_d = pitch_max - pitch_min;
   
-  yaw_lcd = (((yaw_val - yaw_min) *255) / yaw_d);
-  throttle_lcd = (throttle_val- 120)/(688/255);
-  roll_lcd = (((roll_val - roll_min)*255)/roll_d);
-  pitch_lcd = (((pitch_val - pitch_min) *255)/pitch_d);
+  yaw_lcd = ((yaw_val - yaw_min) *25) / (yaw_d/10);
+  throttle_lcd = (throttle_val- throttle_min)*25/(throttle_d/10);
+  roll_lcd = (roll_val - roll_min)*25/(roll_d/10);
+  pitch_lcd = (pitch_val - pitch_min) *25/(pitch_d/10);
 
   
   
   lcd.clear();
   lcd.selectLine(0);
+
+  
   //lcd.print(digitalRead(13));
   lcd.print("y: "); lcd.print(yaw_lcd);
   //lcd.print("  t: "); lcd.print(throttle_val);
