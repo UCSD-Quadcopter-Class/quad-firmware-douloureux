@@ -16,6 +16,37 @@ int pe5 = 5;
 int pe3 = 3;
 int pe4 = 4;
 
+int FL = 0;
+int FR = 0;
+int BL = 0;
+int BR = 0;
+
+double roll_input = 0;
+double pitch_input = 0;
+
+double roll_last_input = 0;
+double pitch_last_input = 0;
+
+double roll_cur = 0;
+double pitch_cur = 0;
+
+double roll_error = 0;
+double pitch_error = 0;
+
+double roll_output = 0;
+double pitch_output = 0;
+
+double i_term = 0;
+double i_min = 0;
+double i_max = 0;
+
+double kp = 0;
+double ki = 0;
+double kd = 0;
+
+double duration = 100;
+
+double cur_time = 0;
 
 void setupSensor()
 {
@@ -28,7 +59,27 @@ void setupSensor()
 
 }
 
+void setupPID(int a, int b, int c, int min_value, int max_value){
+  kp = a;
+  ki = b;
+  kd = c;
 
+  i_min = min_value;
+  i_max = max_value;
+}
+
+void pid(){
+  if(cur_time - millis() < duration) return;
+  cur_time = millis();
+  roll_error = roll_input - roll_cur;
+  i_term += roll_error * ki;
+
+  if(i_term > i_max ) i_term = i_max;
+  if(i_term < i_min ) i_term = i_min;
+
+  roll_output = kp * roll_error + i_term - (roll_input - roll_last_input) * kd;
+  
+}
 
 void setup() {
  
@@ -44,7 +95,29 @@ void setup() {
     while (1);
   }
   setupSensor();
+  setupPID(2,1,3,-100,100);
+  cur_time = millis();
 }
+
+void loop(){
+
+  sensors_vec_t orientation;
+  ahrs.getOrientation(&orientation);
+  
+  Serial.print("Orientation roll: "); Serial.println(orientation.roll);
+  Serial.print("Orientation pitch: "); Serial.println(orientation.pitch);
+  Serial.println("");
+  
+  roll_cur = orientation.pitch;
+  pid();
+  analogWrite(pe4, 100+roll_output); //FR
+  analogWrite(pb5, 100+roll_output); // FL
+  analogWrite(pe3, 100+roll_output); //BR
+  analogWrite(pe5, 100+roll_output); //BL
+  Serial.print("pid: "); Serial.println(roll_output);
+}
+
+
 
 
 //void loop() {
@@ -72,18 +145,5 @@ void setup() {
 //  }
 //}
 
-
-void loop(){
-
-  sensors_vec_t orientation;
-
-  ahrs.getOrientation(&orientation);
-  
-  Serial.print("Orientation roll: "); Serial.println((int)orientation.roll);
-  Serial.print("Orientation pitch: "); Serial.println((int)orientation.pitch);
-  Serial.print("Orientation heading: "); Serial.println((int)orientation.heading);
-  Serial.println("");
-  delay(4000);
-}
 
 
