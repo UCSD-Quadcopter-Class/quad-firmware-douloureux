@@ -10,7 +10,35 @@
 Adafruit_LSM9DS1 lsm = Adafruit_LSM9DS1();
 Adafruit_Simple_AHRS ahrs(&lsm.getAccel(), &lsm.getMag());
 
+  int y1;
+  int t1;
+  int r1;
+  int p1;
+  int b11;
+  int b21;
+  double pen11;
+  double pen21;
 
+  int yR;
+  int tR;
+  int rR;
+  int pR;
+  int b1R;
+  int b2R;
+  double pen1R;
+  double pen2R;
+
+
+  int y;
+  int t;
+  int r;
+  int p;
+  int b1;
+  int b2;
+  double pen1;
+  double pen2;  
+
+int initialize = 0;
 int pb5 = 8;
 int pe5 = 5;
 int pe3 = 3;
@@ -104,18 +132,67 @@ void pid(){
   roll_last_input = roll_input;
 }
 
+int rfError(){
 
+    yR = cptr.y;
+    tR = cptr.t;
+    rR = cptr.r;
+    pR = cptr.p;
+    pen1R = cptr.pen1;
+    pen2R = cptr.pen2;
+  if( initialize == 0 ) { 
+    initialize = 1; 
+    y1 = cptr.y;
+    t1 = cptr.t;
+    r1 = cptr.r;
+    p1 = cptr.p;
+    pen11 = cptr.pen1;
+    pen21 = cptr.pen2;
+   
+    return 1; 
+  }
+
+  if( (abs(y1 - cptr.y) < 30)  ) { y1 = cptr.y; }
+  else if( (abs(cptr.y - yR) < 30) ) { cptr.y = yR; }
+  else { cptr.y = y1; }
+  
+  if( (abs(t1 - cptr.t) < 30) ) { t1 = cptr.t;}
+  else if( (abs(cptr.t - tR) < 30) ) { cptr.t = tR; }
+  else { cptr.t = t1;}
+  
+  if( (abs(r1 - cptr.r) < 30) ) { r1 = cptr.r; }
+  else if( (abs(cptr.r - rR) < 30) ) { cptr.r = rR; }
+  else{ cptr.r = r1; }
+  
+  if( (abs(p1 - cptr.p) < 30) ) { p1 = cptr.p; }
+  else if( (abs(cptr.p - pR) < 30)) { cptr.p = pR; }
+  else{ cptr.p = p1; }
+  
+  if( (abs(pen11 - cptr.pen1) < 3) ) { pen11 = cptr.pen1; }
+  else if( (abs(cptr.pen1 - pen1R) < 3) ) { cptr.pen1 = pen1R; }
+  else{ cptr.pen1 = pen11; }
+  
+  if( (abs(pen21 - cptr.pen2 ) < 3) ) { pen21 = cptr.pen2; }
+  else if( (abs(cptr.pen2 - pen2R) < 3) ) { cptr.pen2 = pen2R; }
+  else{ cptr.pen2 = pen21; }
+    
+
+  return 1;
+  
+}
 
 void rf_receive() {
   rfRead( (uint8_t*)(&cptr) , (uint8_t)sizeof(Copter));
-  Serial.print("y: "); Serial.print(cptr.y);
-  Serial.print("t: "); Serial.print(cptr.t);
-  Serial.print("r: "); Serial.print(cptr.r);
-  Serial.print("p: "); Serial.print(cptr.p);
-  Serial.print("b1: "); Serial.print(cptr.b1);
-  Serial.print("b2: "); Serial.print(cptr.b2);
-  Serial.print("pen1: "); Serial.print(cptr.pen1);
-  Serial.print("pen2: "); Serial.println(cptr.pen2);
+  if(  rfError() ) {
+    Serial.print("y: "); Serial.print(cptr.y);
+    Serial.print("t: "); Serial.print(cptr.t);
+    Serial.print("r: "); Serial.print(cptr.r);
+    Serial.print("p: "); Serial.print(cptr.p);
+    Serial.print("b1: "); Serial.print(cptr.b1);
+    Serial.print("b2: "); Serial.print(cptr.b2);
+    Serial.print("pen1: "); Serial.print(cptr.pen1);
+    Serial.print("pen2: "); Serial.println(cptr.pen2);
+  }
 }
 
 

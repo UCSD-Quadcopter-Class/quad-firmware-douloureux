@@ -39,10 +39,11 @@ double pen2 = 0;
 serLCD lcd;
 
 typedef struct{
-  double y;
-  double t;
-  double r;
-  double p;
+  
+  int y;
+  int t;
+  int r;
+  int p;
   int b1;
   int b2;
   double pen1;
@@ -82,7 +83,7 @@ void setup()
 void loop()
 
 {
-  delay(1000);
+  delay(100);
   pinMode(PIN_BTN1, INPUT_PULLUP);            // Button 1
   pinMode(PIN_BTN2, INPUT_PULLUP);            // Button 2
 
