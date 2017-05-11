@@ -39,14 +39,14 @@ double pen2 = 0;
 serLCD lcd;
 
 typedef struct{
-  int y;
-  int t;
-  int r;
-  int p;
+  double y;
+  double t;
+  double r;
+  double p;
   int b1;
   int b2;
-  int pen1;
-  int pen2;
+  double pen1;
+  double pen2;
 
 } Copter;
 
@@ -82,7 +82,7 @@ void setup()
 void loop()
 
 {
-  delay(1500);
+  delay(1000);
   pinMode(PIN_BTN1, INPUT_PULLUP);            // Button 1
   pinMode(PIN_BTN2, INPUT_PULLUP);            // Button 2
 
@@ -90,7 +90,7 @@ void loop()
   btn2 = digitalRead(PIN_BTN2);
 
   rf_copter.b1 = btn1;
-  rf_copter.b1 = btn2;
+  rf_copter.b2 = btn2;
    
   
   pen1 = analogRead(PIN_POT1); 

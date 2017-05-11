@@ -16,10 +16,10 @@ int pe5 = 5;
 int pe3 = 3;
 int pe4 = 4;
 
-int FL = 0;
-int FR = 0;
-int BL = 0;
-int BR = 0;
+double FL = 0;
+double FR = 0;
+double BL = 0;
+double BR = 0;
 
 double roll_input = 0;
 double pitch_input = 0;
@@ -44,9 +44,19 @@ double kp = 0;
 double ki = 0;
 double kd = 0;
 
-double duration = 100;
+double duration = 1;
 
-double cur_time = 0;
+double last_time = 0;
+
+typedef struct{
+  int y;
+  int t;
+  int r;
+  int p;
+
+} Copter;
+
+Copter cptr;
 
 void setupSensor()
 {
@@ -59,27 +69,47 @@ void setupSensor()
 
 }
 
-void setupPID(int a, int b, int c, int min_value, int max_value){
+void setupPID(double a, double b, double c, double min_value, double max_value){
   kp = a;
   ki = b;
   kd = c;
 
   i_min = min_value;
   i_max = max_value;
+  last_time = millis();
 }
 
 void pid(){
-  if(cur_time - millis() < duration) return;
-  cur_time = millis();
+  if(millis() - last_time < duration) return;
+  last_time = millis();
   roll_error = roll_input - roll_cur;
   i_term += roll_error * ki;
-
+  //Serial.println(i_term);
   if(i_term > i_max ) i_term = i_max;
   if(i_term < i_min ) i_term = i_min;
-
-  roll_output = kp * roll_error + i_term - (roll_input - roll_last_input) * kd;
   
+  
+  roll_output = kp * roll_error + i_term - (roll_input - roll_last_input) * kd; 
+  
+  
+  Serial.print("\tP: ");Serial.print(kp * roll_error);
+  Serial.print("\tI: ");Serial.print(i_term);
+  Serial.print("\tD: ");Serial.print((roll_input - roll_last_input) * kd);
+  Serial.print("\tOUTPUT: ");Serial.println(roll_output);
+  roll_last_input = roll_input;
 }
+
+
+
+void rf_receive() {
+  rfRead( (uint8_t*)(&cptr) , (uint8_t)sizeof(Copter));
+  Serial.print("y: "); Serial.println(cptr.y);
+  Serial.print("t: "); Serial.println(cptr.t);
+  Serial.print("r: "); Serial.println(cptr.r);
+  Serial.print("p: "); Serial.println(cptr.p);
+}
+
+
 
 void setup() {
  
@@ -95,8 +125,9 @@ void setup() {
     while (1);
   }
   setupSensor();
-  setupPID(2,1,3,-100,100);
-  cur_time = millis();
+  setupPID(1.8++
+  
+  ,0,0,-100,100);
 }
 
 void loop(){
@@ -104,46 +135,29 @@ void loop(){
   sensors_vec_t orientation;
   ahrs.getOrientation(&orientation);
   
-  Serial.print("Orientation roll: "); Serial.println(orientation.roll);
-  Serial.print("Orientation pitch: "); Serial.println(orientation.pitch);
-  Serial.println("");
-  
+//Serial.print("Orientation roll: "); Serial.println(orientation.roll);
+//Serial.print("Orientation pitch: "); Serial.println(orientation.pitch);
+//  Serial.println("");
+  roll_input = 0;
   roll_cur = orientation.pitch;
   pid();
-  analogWrite(pe4, 100+roll_output); //FR
-  analogWrite(pb5, 100+roll_output); // FL
-  analogWrite(pe3, 100+roll_output); //BR
-  analogWrite(pe5, 100+roll_output); //BL
-  Serial.print("pid: "); Serial.println(roll_output);
+//  
+//  analogWrite(pe5, (160-roll_output)*1.1); //FR
+//  analogWrite(pb5, (160-roll_output)*1.1); // FL
+//  analogWrite(pe3, 160+roll_output); //BL
+//  analogWrite(pe4, 160+roll_output); //BR
+
+  analogWrite(pe5, 165-roll_output); //FR
+  analogWrite(pb5, 160-roll_output); // FL
+  analogWrite(pe3, 140+roll_output); //BL
+  analogWrite(pe4, 145+roll_output); //BR 
+
+
+
+//  if(rfAvailable())
+//    rf_receive();
 }
 
-
-
-
-//void loop() {
-//  // put your main code here, to run repeatedly:
-//  //analogWrite(motorPin, 120);
-//  if( Serial.available()){
-//    throttle = Serial.parseInt();
-//    Serial.print("Throttle is:");
-//    Serial.println(throttle);
-//    //rfWrite(Serial.read());
-//  }
-//  if( throttle >= 0 && throttle <= 255 ) {
-//    analogWrite(pb5, 250);
-//    analogWrite(pe5, 150);
-//    analogWrite(pe3, 250);
-//    analogWrite(pe4, 250);
-//  } 
-//  if(rfAvailable()){
-//   throttle = rfRead();
-//   Serial.println(throttle);
-//   analogWrite(pb5, throttle);
-//   analogWrite(pe5, throttle);
-//   analogWrite(pe3, throttle);
-//   analogWrite(pe4, throttle);
-//  }
-//}
 
 
 
