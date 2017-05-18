@@ -21,7 +21,7 @@
 #define POT_MIN  118
 #define POT_MAX  815
 #define POT_MINEW  0.0
-#define POT_MAXEW 10.0
+#define POT_MAXEW 3.0
 
 
 
