@@ -20,9 +20,10 @@
 //MAX && MINS of Potentiometers
 #define POT_MIN  118
 #define POT_MAX  815
-#define POT_MINEW  0.0
-#define POT_MAXEW 10.0
-
+#define POT_MINEW1  0.0
+#define POT_MAXEW1 200.0
+#define POT_MINEW2 0.0
+#define POT_MAXEW2 10.0
 
 
 

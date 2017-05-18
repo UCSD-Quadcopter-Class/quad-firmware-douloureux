@@ -97,8 +97,8 @@ void loop()
   pen1 = analogRead(PIN_POT1); 
   pen2 = analogRead(PIN_POT2);
 
-  p1 = (((pen1 - POT_MIN) * (POT_MAXEW)) / (POT_MAX - POT_MIN)) + POT_MINEW;
-  p2 = (((pen2 - POT_MIN) * (POT_MAXEW)) / (POT_MAX - POT_MIN)) + POT_MINEW;
+  p1 = (((pen1 - POT_MIN) * (POT_MAXEW1)) / (POT_MAX - POT_MIN)) + POT_MINEW1;
+  p2 = (((pen2 - POT_MIN) * (POT_MAXEW2)) / (POT_MAX - POT_MIN)) + POT_MINEW2;
 
   rf_copter.pen1 = p1;
   rf_copter.pen2 = p2;
@@ -131,6 +131,12 @@ void loop()
   lcd.selectLine(1);
   lcd.print("r: "); lcd.print((signed)roll_lcd);
   lcd.print("  p: "); lcd.print((signed)pitch_lcd);
+
+  Serial.print("Pen1:");
+  Serial.println(p1);
+  Serial.print("Pen2:");
+  Serial.println(p2);
+
   
   rf_copter.t = throttle_lcd;
   rf_copter.y = yaw_lcd;
