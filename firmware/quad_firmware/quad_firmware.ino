@@ -1,4 +1,4 @@
-#include <serLCD.h>
+ #include <serLCD.h>
 #include "radio.h"
 #include "Adafruit_Simple_AHRS.h"
 #include <Wire.h>
@@ -18,8 +18,6 @@ Adafruit_Simple_AHRS ahrs(&lsm.getAccel(), &lsm.getMag());
   double pen11;
   double pen21;
 
-  int initialize = 0;
-
   int yR;
   int tR;
   int rR;
@@ -31,7 +29,16 @@ Adafruit_Simple_AHRS ahrs(&lsm.getAccel(), &lsm.getMag());
 
 
 
+  int y;
+  int t;
+  int r;
+  int p;
+  int b1;
+  int b2;
+  double pen1;
+  double pen2;  
 
+int initialize = 0;
 int pb5 = 8;
 int pe5 = 5;
 int pe3 = 3;
@@ -67,7 +74,7 @@ double kp = 0;
 double ki = 0;
 double kd = 0;
 
-double duration = 0;
+double duration = 1;
 
 unsigned int last_time = 0;
 int loop_count = 0;
@@ -81,8 +88,8 @@ typedef struct{
   int t;
   int r;
   int p;
-  int b1;
-  int b2;
+  boolean b1;
+  boolean b2;
   double pen1;
   double pen2;
 
@@ -114,21 +121,28 @@ void setupPID(double a, double b, double c, double min_value, double max_value){
 void pid(){
   if(abs(millis() - last_time) < duration) return;
   last_time = millis();
+  
   roll_error = roll_input - roll_cur;
-  i_term += roll_error * ki;
+  i_term += roll_error * ki*duration;
+  
   if(i_term > i_max ) i_term = i_max;
   if(i_term < i_min ) i_term = i_min;
   
   
-  roll_output = kp * roll_error + i_term + (roll_error - roll_last_error) * kd; 
+  roll_output = kp * roll_error + i_term - ( roll_error - roll_last_error) * kd/duration; 
+
   
-  Serial.print("\tP: ");Serial.print(kp * roll_error);
-//  Serial.print("\tI: ");Serial.print(i_term);
-  Serial.print("\tD: ");Serial.print((roll_error - roll_last_error) * kd);
-  Serial.print("\tOUTPUT: ");Serial.println(roll_output);
+//  if(roll_output > 50 ) roll_output = 50;
+//  if(roll_output < -50 ) roll_output = -50;
+
+  Serial.print("\terror: ");Serial.print( roll_error);
+  //Serial.print("\tP: ");Serial.print(kp * roll_error);
+  //Serial.print("\tI: ");Serial.print(i_term);
+  Serial.print("\tD: ");Serial.println((roll_error - roll_last_error) * kd/duration);
+ // Serial.print("\tOUTPUT: ");Serial.println(roll_output);
+
   roll_last_error = roll_error;
 }
-
 
 
 int rfError(){
@@ -167,8 +181,8 @@ int rfError(){
   else if( (0 <abs(cptr.p - pR) < 30)) { p1 = cptr.p; cptr.p = pR; }
   else{ cptr.p = p1; }
   
-  if( (0 <abs(pen11 - cptr.pen1) < 80) ) { pen11 = cptr.pen1; }
-  else if( (0 <abs(cptr.pen1 - pen1R) < 80) ) { pen11 = cptr.pen1; cptr.pen1 = pen1R; }
+  if( ((0 < abs(pen11 - cptr.pen1) < 80)) && 0<pen11<200) { pen11 = cptr.pen1; }
+  else if( (0 <abs(cptr.pen1 - pen1R) < 80) && 0<pen11<200 ) { pen11 = cptr.pen1; cptr.pen1 = pen1R; }
   else{ cptr.pen1 = pen11; }
   
   if( (0 <abs(pen21 - cptr.pen2 ) < 80) ) { pen21 = cptr.pen2; }
@@ -191,6 +205,7 @@ void rf_receive() {
 //    Serial.print("b2: "); Serial.print(cptr.b2);
 //    Serial.print("pen1: "); Serial.print(cptr.pen1);
 //    Serial.print("pen2: "); Serial.println(cptr.pen2);
+
   }
 }
 
@@ -210,6 +225,10 @@ void setup() {
   }
   setupSensor();
   last_time = millis();
+  pinMode(pe5, OUTPUT);
+  pinMode(pb5, OUTPUT);
+  pinMode(pe3, OUTPUT);
+  pinMode(pe4, OUTPUT);
   setupPID(cptr.pen2,0,20,-100,100);
 }
 
@@ -221,7 +240,6 @@ void loop(){
   sensors_event_t a, m, g, temp;
   lsm.getEvent(&a, &m, &g, &temp);
   setupPID(cptr.pen2,0,cptr.pen1,-100,100);
-//  setupPID(1.3,0,20,-100,100);
  
 
   float roll_g = g.gyro.x;
@@ -230,28 +248,24 @@ void loop(){
   roll = 0.9*(roll + g.gyro.x * 0.001) + 0.1 * orientation.roll;
   pitch = 0.9*(pitch + g.gyro.y * 0.001) + 0.1 * orientation.pitch;
 
-  
-//  Serial.print("\troll: "); Serial.print(roll);
-//  Serial.print("\tpitch: "); Serial.println(pitch);
+//  Serial.print(roll); 
+//  Serial.println(pitch);
   roll_input = 0;
   roll_cur = pitch;
   pid();
-
-  //Serial.print("\tFR: ");Serial.print(FR);
-  //Serial.print("\tFL: ");Serial.print(FL);
-  //Serial.print("\tBL: ");Serial.print(BL);
-  //Serial.print("\tBR: ");Serial.println(BR);
-//  //Serial.print("\tpen2: "); Serial.println(cptr.pen1);
-//  Serial.print("\troll output: "); Serial.println(roll_output);
-  //Serial.print("\troll: "); Serial.println(pitch);
-
-  
-  analogWrite(pe5, 120 + cptr.t-roll_output); //FR
-  analogWrite(pb5, 120 + cptr.t-roll_output); // FL
-  analogWrite(pe3, 120+roll_output); //BL
-  analogWrite(pe4, 120+roll_output); //BR 
-
-//
+  //Serial.println(cptr.b1);
+  if(cptr.b1){
+    analogWrite(pe5, 180 - roll_output); //FR
+    analogWrite(pb5, 180 - roll_output); // FL
+    analogWrite(pe3, 160+ roll_output); //BL
+    analogWrite(pe4, 160+ roll_output); //BR
+  }
+  else{
+    analogWrite(pe5, 0); //FR
+    analogWrite(pb5, 0); // FL
+    analogWrite(pe3, 0); //BL
+    analogWrite(pe4, 0); //BR
+  }
   if(rfAvailable())
     rf_receive();
 }
