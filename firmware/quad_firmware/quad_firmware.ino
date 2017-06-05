@@ -74,9 +74,9 @@ double kp = 0;
 double ki = 0;
 double kd = 0;
 
-double duration = 1;
+int duration = 10;
 
-unsigned int last_time = 0;
+int last_time = 0;
 int loop_count = 0;
 
 
@@ -119,8 +119,8 @@ void setupPID(double a, double b, double c, double min_value, double max_value){
 }
 
 void pid(){
-  if(abs(millis() - last_time) < duration) return;
-  last_time = millis();
+  duration = abs(millis() - last_time);
+  
   
   roll_error = roll_input - roll_cur;
   i_term += roll_error * ki*duration;
@@ -128,20 +128,19 @@ void pid(){
   if(i_term > i_max ) i_term = i_max;
   if(i_term < i_min ) i_term = i_min;
   
-  
-  roll_output = kp * roll_error + i_term - ( roll_error - roll_last_error) * kd/duration; 
+  roll_output = kp * roll_error + i_term + ( roll_error - roll_last_error) *kd/duration*1000; 
 
-  
 //  if(roll_output > 50 ) roll_output = 50;
 //  if(roll_output < -50 ) roll_output = -50;
 
-  Serial.print("\terror: ");Serial.print( roll_error);
-  //Serial.print("\tP: ");Serial.print(kp * roll_error);
-  //Serial.print("\tI: ");Serial.print(i_term);
-  Serial.print("\tD: ");Serial.println((roll_error - roll_last_error) * kd/duration);
- // Serial.print("\tOUTPUT: ");Serial.println(roll_output);
+//  Serial.print("\terror: ");Serial.print( roll_error);
+//  Serial.print("\tP: ");Serial.print(kp * roll_error);
+//  //Serial.print("\tI: ");Serial.print(i_term);
+//  Serial.print("\tD: ");Serial.print((roll_error - roll_last_error)* kd/duration*100);
+//  Serial.print("\tOUTPUT: ");Serial.println(roll_output);
 
   roll_last_error = roll_error;
+  last_time = millis();
 }
 
 
@@ -245,20 +244,37 @@ void loop(){
   float roll_g = g.gyro.x;
   float pitch_g = g.gyro.y;
 
-  roll = 0.9*(roll + g.gyro.x * 0.001) + 0.1 * orientation.roll;
-  pitch = 0.9*(pitch + g.gyro.y * 0.001) + 0.1 * orientation.pitch;
-
-//  Serial.print(roll); 
-//  Serial.println(pitch);
+  roll = 0.97*(roll - g.gyro.x * 0.01) + 0.03 * orientation.roll;
+  pitch = 0.97*(pitch - g.gyro.y * 0.01) + 0.03 * orientation.pitch;
+  Serial.print("\tpen2: "); Serial.print(orientation.pitch);
+  Serial.print("\tpen2: "); Serial.println(pitch);
   roll_input = 0;
   roll_cur = pitch;
   pid();
-  //Serial.println(cptr.b1);
+  //roll_output = roll_output + 20;
+  FR = cptr.t + 15 -roll_output;
+  FL = cptr.t + 15 -roll_output;
+  BL = cptr.t - 15 +roll_output;
+  BR = cptr.t -15 + roll_output;
+
+
+
+  if(FR > 250) FR = 250;
+  if(FR < 0 ) FR = 0;
+  if(BL > 250) BL = 250;
+  if(BL < 0) BL = 0;
+
+  FL = FR;
+  BR = BL;
+
+  
   if(cptr.b1){
-    analogWrite(pe5, 180 - roll_output); //FR
-    analogWrite(pb5, 180 - roll_output); // FL
-    analogWrite(pe3, 160+ roll_output); //BL
-    analogWrite(pe4, 160+ roll_output); //BR
+    analogWrite(pe5, FR ); //FR
+    analogWrite(pb5, FL); // FL
+    analogWrite(pe3, BL); //BL
+    analogWrite(pe4, BR); //BR
+
+
   }
   else{
     analogWrite(pe5, 0); //FR
