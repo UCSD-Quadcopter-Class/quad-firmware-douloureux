@@ -46,6 +46,12 @@
 #define PE4 4
 
 
+//LED ring PIN
+#define LEDPIN 19
+
+//LED patterns
+#define NUM_OF_LED_PATTERNS 5
+
 
 
 
