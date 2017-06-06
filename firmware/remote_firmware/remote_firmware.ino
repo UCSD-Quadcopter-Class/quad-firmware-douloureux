@@ -1,105 +1,121 @@
 #include <serLCD.h>
-#include "radio.h"
-#include "quad_firmware.h"
+#include <radio.h>
+#include <quad_firmware.h>
 
-double btn1 = 0;
-double btn2 = 0;
+
 double yaw_lcd = 0;
 double throttle_lcd = 0;
 double roll_lcd = 0;
 double pitch_lcd = 0;
+
+char error[] = "douluo";
 
 double yaw_val = 0;
 double throttle_val = 0;
 double roll_val = 0;
 double pitch_val = 0;
 
-double yaw_max = 0;
-double throttle_max = 0; 
-double roll_max = 0;
-double pitch_max = 0; 
-
-double yaw_min = 500;
-double throttle_min = 500;
-double roll_min = 500;
-double pitch_min = 500;
-
-double yaw_d = 0;
-double throttle_d = 0;
-double roll_d = 0;
-double pitch_d = 0;
-
 double p1 = 0;
 double p2 = 0;
-
 double pen1 = 0;
 double pen2 = 0;
+boolean btn1 = 0;
+boolean btn2 = 0;
 
-
+int timer = 0;
 serLCD lcd;
 
-typedef struct{
+struct Copter{
   
-  int y;
-  int t;
-  int r;
-  int p;
-  int b1;
-  int b2;
+  int yaw;
+  int throttle;
+  int roll;
+  int pitch;
+  boolean b1;
+  boolean b2;
   double pen1;
   double pen2;
+  char errorCode[7];
 
-} Copter;
-
+} ;
 Copter rf_copter;
 
 void rf_sent() {
-
-  
-  rfWrite( (uint8_t*)(&rf_copter) , (uint8_t)sizeof(rf_copter));
-
-  
+  rfWrite( (uint8_t*)(&rf_copter) , (uint8_t)sizeof(Copter)); 
 }
 
 Copter * cptr;
+
+void normalize(struct Copter* cptr, double throttle, double pitch, double yaw, double roll) {
+  if( pitch > PITCH_MIDPOINT ) {
+    cptr->pitch = (pitch - PITCH_MIDPOINT)/(PITCH_MAX-PITCH_MIDPOINT)*PITCH_CONSTRAIN;
+  }
+  else{
+    cptr->pitch = (pitch - PITCH_MIDPOINT ) / ( PITCH_MIDPOINT - PITCH_MIN ) * PITCH_CONSTRAIN;
+  }
+  if( yaw > YAW_MIDPOINT ) {
+    cptr->yaw = (yaw - YAW_MIDPOINT ) / ( YAW_MAX - YAW_MIDPOINT ) * YAW_CONSTRAIN;
+  }
+  else{
+    cptr->yaw = (yaw - YAW_MIDPOINT)/( YAW_MIDPOINT - YAW_MIN ) * YAW_CONSTRAIN;
+  }
+  if( roll > ROLL_MIDPOINT ) {
+    cptr->roll = (roll - ROLL_MIDPOINT ) / ( ROLL_MAX - ROLL_MIDPOINT ) * ROLL_CONSTRAIN;
+  }
+  else{
+    cptr->roll = (roll - ROLL_MIDPOINT)/( ROLL_MIDPOINT - ROLL_MIN ) * ROLL_CONSTRAIN;
+  }
+  cptr->throttle = (throttle-THROTTLE_MIN)/(THROTTLE_MAX - THROTTLE_MIN) * THROTTLE_CONSTRAIN;
+}
 
 void rf_receive() {
   rfRead( (uint8_t*)cptr , (uint8_t)sizeof(rf_copter));
 }
 
-void setup()
+void buttonClicked1(){
+  if( rf_copter.b1 == false) rf_copter.b1 = true;
+  else if( rf_copter.b1 == true ) rf_copter.b1 = false;
+}
 
+void buttonClicked2(){
+  if( rf_copter.b2 == false) rf_copter.b2 = true;
+  else if( rf_copter.b2 == true ) rf_copter.b2 = false;
+}
+
+
+void setup()
 {
-  rfBegin(13);
+  rfBegin(CHANEL);
   Serial.begin(115200);          //  setup serial
   lcd.clear();
   lcd.display();
   lcd.setBrightness(20);
-  rf_copter.b1 = 1;
-  rf_copter.b2 = 1;
   
+  
+  rf_copter.b1 = false;
+  rf_copter.b2 = false;
+
+  timer = millis();
 }
 
 void loop()
 
 {
-  delay(100);
+  delay(10);
+  
   pinMode(PIN_BTN1, INPUT_PULLUP);            // Button 1
   pinMode(PIN_BTN2, INPUT_PULLUP);            // Button 2
-
   btn1 = digitalRead(PIN_BTN1); 
   btn2 = digitalRead(PIN_BTN2);
+  if( btn1 == 0 ) { buttonClicked1(); }
+  if( btn2 == 0 ) { buttonClicked2(); }
 
-  rf_copter.b1 = btn1;
-  rf_copter.b2 = btn2;
-   
-  
   pen1 = analogRead(PIN_POT1); 
   pen2 = analogRead(PIN_POT2);
-
   p1 = (((pen1 - POT_MIN) * (POT_MAXEW1)) / (POT_MAX - POT_MIN)) + POT_MINEW1;
   p2 = (((pen2 - POT_MIN) * (POT_MAXEW2)) / (POT_MAX - POT_MIN)) + POT_MINEW2;
-
+  if( p1 < 0 ) { p1 = 0; }
+  if( p2 < 0 ) { p2 = 0; }
   rf_copter.pen1 = p1;
   rf_copter.pen2 = p2;
   
@@ -107,41 +123,38 @@ void loop()
   throttle_val = analogRead(PIN_THROTTLE);    
   roll_val = analogRead(PIN_ROLL);    
   pitch_val = analogRead(PIN_PITCH);  
-
-  if(yaw_val > yaw_max) { yaw_max = yaw_val;}
-  if(throttle_val > throttle_max) { throttle_max = throttle_val; }
-  if(roll_val > roll_max) { roll_max = roll_val; }
-  if(pitch_val > pitch_max) { pitch_max = pitch_val; }
   
-  if(yaw_val < yaw_min) { yaw_min = yaw_val;}
-  if(throttle_val < throttle_min) { throttle_min = throttle_val; }
-  if(roll_val < roll_min) { roll_min = roll_val; }
-  if(pitch_val < pitch_min) { pitch_min = pitch_val; }
+//  rf_copter.throttle = throttle_val;
+//  rf_copter.pitch = pitch_val;
+//  rf_copter.roll = roll_val;
+//  rf_copter.yaw = yaw_val;
 
-  throttle_lcd = (throttle_val- throttle_min)*140/(throttle_max - throttle_min);
-  roll_lcd = (roll_val - roll_min)*140/(roll_max - roll_min);
-  pitch_lcd = (pitch_val - pitch_min) *140/(pitch_max - pitch_min);
-  yaw_lcd = (yaw_val - yaw_min) * 140 / (yaw_max - yaw_min);
+  normalize(&rf_copter, throttle_val, pitch_val, yaw_val, roll_val);
 
-  rfWrite(throttle_lcd);
+
   lcd.clear();
   lcd.selectLine(0);
-  lcd.print("y: "); lcd.print((signed)yaw_lcd);
-  lcd.print("  t: "); lcd.print((signed)throttle_lcd);
+  lcd.print("y: "); lcd.print((signed)rf_copter.yaw);
+  lcd.print("  t: "); lcd.print((signed)rf_copter.throttle);
   lcd.selectLine(1);
-  lcd.print("r: "); lcd.print((signed)roll_lcd);
-  lcd.print("  p: "); lcd.print((signed)pitch_lcd);
+  lcd.print("r: "); lcd.print((signed)rf_copter.roll);
+  lcd.print("  p: "); lcd.print((signed)rf_copter.pitch);
 
-  Serial.print("Pen1:");
-  Serial.println(p1);
-  Serial.print("Pen2:");
+  Serial.print("Throttle:");
+  Serial.print(rf_copter.throttle);
+  Serial.print("  Pitch:");
+  Serial.print(rf_copter.pitch);
+  Serial.print("  Yaw:");
+  Serial.print(rf_copter.yaw);
+  Serial.print("  Roll:");
+  Serial.print(rf_copter.roll);
+  Serial.print("  D:");
+  Serial.print(p1);
+  Serial.print("  P:");
   Serial.println(p2);
-
-  
-  rf_copter.t = throttle_lcd;
-  rf_copter.y = yaw_lcd;
-  rf_copter.r = roll_lcd;
-  rf_copter.p = pitch_lcd;
+//  Serial.print("Button1:");
+//  Serial.println(rf_copter.b1);
+  strcpy(rf_copter.errorCode, error);
   rf_sent();
   
 }

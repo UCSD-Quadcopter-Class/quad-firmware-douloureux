@@ -17,13 +17,38 @@
 #define PIN_LED_GRN		23		// PD5 (schematic) D5 (red board)
 #define PIN_LED_RED		24		// PD4 (schematic) D6 (red board)		
 
+// The RF CHannel we will be using
+#define CHANEL			13
+
+
 //MAX && MINS of Potentiometers
-#define POT_MIN  118
-#define POT_MAX  815
-#define POT_MINEW1  0.0
-#define POT_MAXEW1 200.0
-#define POT_MINEW2 0.0
-#define POT_MAXEW2 10.0
+#define POT_MIN  		118.0
+#define POT_MAX  		815.0
+
+#define POT_MINEW1  		0.0
+#define POT_MAXEW1 		1.0
+#define POT_MINEW2 		0.0
+#define POT_MAXEW2 		10.0
+
+
+#define THROTTLE_MIN 		116.0
+#define THROTTLE_MAX 		810.0
+#define PITCH_MIN 		144.0
+#define PITCH_MAX 		815.0
+#define YAW_MIN 		123.0
+#define YAW_MAX 		815.0
+#define ROLL_MIN 		131.0
+#define ROLL_MAX 		815.0
+
+#define THROTTLE_CONSTRAIN 	250.0
+#define PITCH_CONSTRAIN 	5.0
+#define YAW_CONSTRAIN 		5.0
+#define ROLL_CONSTRAIN 		5.0
+
+#define YAW_MIDPOINT		483.0
+#define ROLL_MIDPOINT		504.0
+#define PITCH_MIDPOINT		521.0
+
 
 
 // PID constants
@@ -45,14 +70,11 @@
 #define PE3 3
 #define PE4 4
 
-
 //LED ring PIN
 #define LEDPIN 19
 
 //LED patterns
 #define NUM_OF_LED_PATTERNS 5
-
-
 
 
 
