@@ -51,6 +51,23 @@
 
 
 
+// PID constants
+#define YAW_P 0
+#define YAW_I 0
+#define YAW_D 0
 
+#define PITCH_P 4.87
+#define PITCH_I 0
+#define PITCH_D 0.43
+
+#define ROLL_P 0
+#define ROLL_I 0
+#define ROLL_D 0
+
+// Motor pin number
+#define PB5 8
+#define PE5 5
+#define PE3 3
+#define PE4 4
 
 
