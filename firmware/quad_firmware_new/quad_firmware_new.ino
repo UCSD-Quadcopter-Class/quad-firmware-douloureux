@@ -7,6 +7,17 @@
 #include <Adafruit_LSM9DS1.h>
 #include <Adafruit_Sensor.h>  // not used in this demo but required!
 
+#include <Adafruit_NeoPixel.h>
+#ifdef __AVR__
+  #include <avr/power.h>
+#endif
+
+// declare led ring 
+Adafruit_NeoPixel strip = Adafruit_NeoPixel(60, LEDPIN, NEO_GRB + NEO_KHZ800);
+double LEDDelayTime = 0;
+double LEDCurTime = 0;
+
+
 Adafruit_LSM9DS1 lsm = Adafruit_LSM9DS1();
 Adafruit_Simple_AHRS ahrs(&lsm.getAccel(), &lsm.getMag());
 char errorCode[] = "douluo";
@@ -128,18 +139,20 @@ void pidCalculation(struct PIDController* pid, double* pidOutputs) {
     
     // Calculate I term
     pid[i].iTerm += error * pid[i].ki * duration;
+    if(pid[i].iTerm > 100) pid[i].iTerm = 100;
+    if(pid[i].iTerm < -100) pid[i].iTerm = -100;
     pidOutputs[i] += pid[i].iTerm * pid[i].ki;
 
     // Calculate D term
     pidOutputs[i] += (error - pid[i].lastError) * pid[i].kd / duration;
     
-//
-//    if (i == 2) {
-//      Serial.print("\tError: "); Serial.print(error);
-//      Serial.print("\tPterm: "); Serial.print(error * pid[i].kp);
-//      Serial.print("\tDterm: "); Serial.print((error - pid[i].lastError) * pid[i].kd / duration);
-//      Serial.print("\toutput: "); Serial.println(pidOutputs[i]);
-//    }
+    if (i == 2) {
+      Serial.print("\tError: "); Serial.print(error);
+      Serial.print("\tPterm: "); Serial.print(error * pid[i].kp);
+      //Serial.print("\tIterm: "); Serial.print(error * pid[i].iTerm);
+      Serial.print("\tDterm: "); Serial.print((error - pid[i].lastError) * pid[i].kd / duration);
+      Serial.print("\toutput: "); Serial.println(pidOutputs[i]);
+   }
     pid[i].lastError = error;
   }
   lastTime = millis();
@@ -152,14 +165,14 @@ void rf_receive() {
 
   if (strcmp(errorCode, temp.errorCode) == 0 && s == sizeof(Copter)) {
     cptr = temp;
-        Serial.print("y: "); Serial.print(cptr.yaw);
-        Serial.print("t: "); Serial.print(cptr.throttle);
-        Serial.print("r: "); Serial.print(cptr.roll);
-        Serial.print("p: "); Serial.print(cptr.pitch);
-        Serial.print("b1: "); Serial.print(cptr.b1);
-        Serial.print("b2: "); Serial.print(cptr.b2);
-        Serial.print("pen1: "); Serial.print(cptr.pen1);
-        Serial.print("pen2: "); Serial.println(cptr.pen2);
+//        Serial.print("y: "); Serial.print(cptr.yaw);
+//        Serial.print("t: "); Serial.print(cptr.throttle);
+//        Serial.print("r: "); Serial.print(cptr.roll);
+//        Serial.print("p: "); Serial.print(cptr.pitch);
+//        Serial.print("b1: "); Serial.print(cptr.b1);
+//        Serial.print("b2: "); Serial.print(cptr.b2);
+//        Serial.print("pen1: "); Serial.print(cptr.pen1);
+//        Serial.print("pen2: "); Serial.println(cptr.pen2);
   }
   else {
     //    Serial.println("ERROR!!!!");
@@ -180,6 +193,7 @@ void setup() {
   }
   setupSensor();
   setputPID(pid);
+  setupLED();
   lastTime = millis();
   pinMode(PE5, OUTPUT);
   pinMode(PB5, OUTPUT);
@@ -195,9 +209,9 @@ void loop() {
 
 
   setupPID_t(&(pid[0]), cptr.pen2, 0, cptr.pen1);
-  setupPID_t(&(pid[1]), cptr.pen2, 0, cptr.pen1);
-  setupPID_t(&(pid[2]), cptr.pen2, 0, cptr.pen1);
-
+  setupPID_t(&(pid[1]), 4.42, cptr.pen1, 0.73);
+  setupPID_t(&(pid[2]), 4.42, cptr.pen1, 0.73);
+  
 
   float roll_g = g.gyro.x;
   float pitch_g = g.gyro.y;
@@ -215,11 +229,11 @@ void loop() {
   pid[1].input = roll;
   pid[2].input = pitch;
   
-  //  pid[0].setPoint = cptr.yaw;
-  //  pid[1].setPoint = cptr.pitch;
+  //pid[0].setPoint = cptr.yaw;
+  //pid[1].setPoint = cptr.pitch;
   pid[2].setPoint = cptr.roll;
 
-//  Serial.println(pid[2].setPoint);
+ // Serial.println(pid[2].setPoint);
 //  pid[0].setPoint = 0;
 //  pid[1].setPoint = 0;
 //  pid[2].setPoint = 0;
@@ -228,10 +242,10 @@ void loop() {
   //  Serial.print("\tpen2: "); Serial.println(pitch);
 
   pidCalculation(pid, pidOutputs);
-  FR = cptr.throttle - 15 + pidOutputs[2];
-  FL = cptr.throttle - 15 + pidOutputs[2];
-  BL = cptr.throttle + 10 - pidOutputs[2];
-  BR = cptr.throttle + 10 - pidOutputs[2];
+  FR = cptr.throttle + pidOutputs[2];
+  FL = cptr.throttle + pidOutputs[2];
+  BL = cptr.throttle - pidOutputs[2];
+  BR = cptr.throttle - pidOutputs[2];
 
 
 
@@ -258,8 +272,141 @@ void loop() {
   }
   if (rfAvailable())
     rf_receive();
+
+    
+//  setLEDDelay(20);
+//  rainbow();
 }
 
 
 
+
+
+//--------------following codes are for LED ring------------------
+
+void setupLED() {
+  // This is for Trinket 5V 16MHz, you can remove these three lines if you are not using a Trinket
+  #if defined (__AVR_ATtiny85__)
+    if (F_CPU == 16000000) clock_prescale_set(clock_div_1);
+  #endif
+  // End of trinket special code
+
+
+  strip.begin();
+  strip.show(); // Initialize all pixels to 'off'
+}
+//
+//void loopLED() {
+//  // Some example procedures showing how to display to the pixels:
+//  colorWipe(strip.Color(255, 0, 0), 50); // Red
+//  colorWipe(strip.Color(0, 255, 0), 50); // Green
+//  colorWipe(strip.Color(0, 0, 255), 50); // Blue
+////colorWipe(strip.Color(0, 0, 0, 255), 50); // White RGBW
+//  // Send a theater pixel chase in...
+//  theaterChase(strip.Color(127, 127, 127), 50); // White
+//  theaterChase(strip.Color(127, 0, 0), 50); // Red
+//  theaterChase(strip.Color(0, 0, 127), 50); // Blue
+//
+//  rainbow(20);
+//  rainbowCycle(20);
+//  theaterChaseRainbow(50);
+//}
+
+void setLEDDelayTimer(int wait){
+  LEDDelayTime = wait;
+}
+bool LEDDelay(){
+  double timeDiff = abs(millis() - LEDCurTime);
+  if(timeDiff > LEDDelayTime){
+    LEDCurTime = millis();
+    return true;
+  }
+  else
+    return false;
+}
+
+// Fill the dots one after the other with a color
+void colorWipe(uint32_t c, uint8_t wait) {
+  for(uint16_t i=0; i<strip.numPixels(); i++) {
+    strip.setPixelColor(i, c);
+    strip.show();
+    delay(wait);
+  }
+}
+
+void rainbow(uint8_t wait) {
+  uint16_t i, j;
+
+  for(j=0; j<256; j++) {
+    for(i=0; i<strip.numPixels(); i++) {
+      strip.setPixelColor(i, Wheel((i+j) & 255));
+    }
+    strip.show();
+    delay(wait);
+  }
+}
+
+// Slightly different, this makes the rainbow equally distributed throughout
+void rainbowCycle(uint8_t wait) {
+  uint16_t i, j;
+
+  for(j=0; j<256*5; j++) { // 5 cycles of all colors on wheel
+    for(i=0; i< strip.numPixels(); i++) {
+      strip.setPixelColor(i, Wheel(((i * 256 / strip.numPixels()) + j) & 255));
+    }
+    strip.show();
+    delay(wait);
+  }
+}
+
+//Theatre-style crawling lights.
+void theaterChase(uint32_t c, uint8_t wait) {
+  for (int j=0; j<10; j++) {  //do 10 cycles of chasing
+    for (int q=0; q < 3; q++) {
+      for (uint16_t i=0; i < strip.numPixels(); i=i+3) {
+        strip.setPixelColor(i+q, c);    //turn every third pixel on
+      }
+      strip.show();
+
+      delay(wait);
+
+      for (uint16_t i=0; i < strip.numPixels(); i=i+3) {
+        strip.setPixelColor(i+q, 0);        //turn every third pixel off
+      }
+    }
+  }
+}
+
+//Theatre-style crawling lights with rainbow effect
+void theaterChaseRainbow(uint8_t wait) {
+  for (int j=0; j < 256; j++) {     // cycle all 256 colors in the wheel
+    for (int q=0; q < 3; q++) {
+      for (uint16_t i=0; i < strip.numPixels(); i=i+3) {
+        strip.setPixelColor(i+q, Wheel( (i+j) % 255));    //turn every third pixel on
+      }
+      strip.show();
+
+      delay(wait);
+
+      for (uint16_t i=0; i < strip.numPixels(); i=i+3) {
+        strip.setPixelColor(i+q, 0);        //turn every third pixel off
+      }
+    }
+  }
+}
+
+// Input a value 0 to 255 to get a color value.
+// The colours are a transition r - g - b - back to r.
+uint32_t Wheel(byte WheelPos) {
+  WheelPos = 255 - WheelPos;
+  if(WheelPos < 85) {
+    return strip.Color(255 - WheelPos * 3, 0, WheelPos * 3);
+  }
+  if(WheelPos < 170) {
+    WheelPos -= 85;
+    return strip.Color(0, WheelPos * 3, 255 - WheelPos * 3);
+  }
+  WheelPos -= 170;
+  return strip.Color(WheelPos * 3, 255 - WheelPos * 3, 0);
+}
 
