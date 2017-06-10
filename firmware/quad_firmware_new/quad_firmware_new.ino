@@ -38,10 +38,10 @@ double rollSum = 0;
 double rollAver;
 double pitchAver;
 
-double FR = 0;
-double FL = 0;
-double BR = 0;
-double BL = 0;
+double FR = 150;
+double FL = 150;
+double BR = 150;
+double BL = 150;
 
 struct Copter {
   int yaw;
@@ -49,7 +49,7 @@ struct Copter {
   int roll;
   int pitch;
   boolean b1;
-  boolean b2;
+  int b2;
   double pen1;
   double pen2;
   char errorCode[7];
@@ -149,14 +149,14 @@ void pidCalculation(struct PIDController* pid, double* pidOutputs) {
 
     // Calculate D term
     pidOutputs[i] += (error - pid[i].lastError) * pid[i].kd / duration;
-
-    if (i == 2) {
-      Serial.print("\tError: "); Serial.print(error);
-      Serial.print("\tPterm: "); Serial.print(error * pid[i].kp);
-      //Serial.print("\tIterm: "); Serial.print(error * pid[i].iTerm);
-      Serial.print("\tDterm: "); Serial.print((error - pid[i].lastError) * pid[i].kd / duration);
-      Serial.print("\toutput: "); Serial.println(pidOutputs[i]);
-    }
+    //
+    //    if (i == 2) {
+    //      Serial.print("\tError: "); Serial.print(error);
+    //      Serial.print("\tPterm: "); Serial.print(error * pid[i].kp);
+    //      //Serial.print("\tIterm: "); Serial.print(error * pid[i].iTerm);
+    //      Serial.print("\tDterm: "); Serial.print((error - pid[i].lastError) * pid[i].kd / duration);
+    //      Serial.print("\toutput: "); Serial.println(pidOutputs[i]);
+    //    }
     pid[i].lastError = error;
   }
   lastTime = millis();
@@ -169,17 +169,17 @@ void rf_receive() {
 
   if (strcmp(errorCode, temp.errorCode) == 0 && s == sizeof(Copter)) {
     cptr = temp;
-    //        Serial.print("y: "); Serial.print(cptr.yaw);
-    //        Serial.print("t: "); Serial.print(cptr.throttle);
-    //        Serial.print("r: "); Serial.print(cptr.roll);
-    //        Serial.print("p: "); Serial.print(cptr.pitch);
-    //        Serial.print("b1: "); Serial.print(cptr.b1);
-    //        Serial.print("b2: "); Serial.print(cptr.b2);
-    //        Serial.print("pen1: "); Serial.print(cptr.pen1);
-    //        Serial.print("pen2: "); Serial.println(cptr.pen2);
+            Serial.print("y: "); Serial.print(cptr.yaw);
+            Serial.print("t: "); Serial.print(cptr.throttle);
+            Serial.print("r: "); Serial.print(cptr.roll);
+            Serial.print("p: "); Serial.print(cptr.pitch);
+            Serial.print("b1: "); Serial.print(cptr.b1);
+            Serial.print("b2: "); Serial.print(cptr.b2);
+            Serial.print("pen1: "); Serial.print(cptr.pen1);
+            Serial.print("pen2: "); Serial.println(cptr.pen2);
   }
   else {
-    //    Serial.println("ERROR!!!!");
+        Serial.println("ERROR!!!!");
   }
 }
 
@@ -211,7 +211,6 @@ void loop() {
   sensors_event_t a, m, g, temp;
   lsm.getEvent(&a, &m, &g, &temp);
 
-
   setupPID_t(&(pid[0]), cptr.pen2, 0, cptr.pen1);
   setupPID_t(&(pid[1]), 4.42, cptr.pen1, 0.73);
   setupPID_t(&(pid[2]), 4.42, cptr.pen1, 0.73);
@@ -228,10 +227,12 @@ void loop() {
   pitch = 0.97 * (pid[2].input - g.gyro.y * 0.01) + 0.03 * pitchAver;
 
 
+//  Serial.print("\t");
+//  Serial.println(g.gyro.z);
 
   pid[0].input = 0;
-  pid[1].input = roll;
-  pid[2].input = pitch;
+  pid[1].input = 0;
+  pid[2].input = 0;
 
   //pid[0].setPoint = cptr.yaw;
   //pid[1].setPoint = cptr.pitch;
@@ -242,24 +243,25 @@ void loop() {
   //  pid[1].setPoint = 0;
   //  pid[2].setPoint = 0;
 
-  //  Serial.print("\tpen2: "); Serial.print(orientation.pitch);
-  //  Serial.print("\tpen2: "); Serial.println(pitch);
+//    Serial.print("\tpen2: "); Serial.print(orientation.pitch);
+//    Serial.print("\tpen2: "); Serial.println(pitch);
 
   pidCalculation(pid, pidOutputs);
-  FR = cptr.throttle + pidOutputs[2];
-  FL = cptr.throttle + pidOutputs[2];
-  BL = cptr.throttle - pidOutputs[2];
-  BR = cptr.throttle - pidOutputs[2];
-
-
-
-  if (FR > 250) FR = 250;
-  if (FR < 0 ) FR = 0;
-  if (BL > 250) BL = 250;
-  if (BL < 0) BL = 0;
-
-  FL = FR;
-  BR = BL;
+  
+  FR = cptr.throttle + pidOutputs[2] + pidOutputs[1];
+  FL = cptr.throttle + pidOutputs[2] - pidOutputs[1];
+  BL = cptr.throttle - pidOutputs[2] - pidOutputs[1];
+  BR = cptr.throttle - pidOutputs[2] + pidOutputs[1];
+//
+//
+//
+//  if (FR > 250) FR = 250;
+//  if (FR < 0 ) FR = 0;
+//  if (BL > 250) BL = 250;
+//  if (BL < 0) BL = 0;
+//
+//  FL = FR;
+//  BR = BL;
 
 
   if (cptr.b1) {
@@ -275,14 +277,14 @@ void loop() {
     analogWrite(PE4, 0); //BR
   }
   if (rfAvailable()) rf_receive();
-
-  if (cptr.b2 != oldButtonValue) {\
-    oldButtonValue = cptr.b2;
-    LEDCurPatterns = (LEDCurPatterns + 1) % NUM_OF_LED_PATTERNS;
-    // next funtion will return the pattern name
-    nextPattern(LEDCurPatterns);
-    //TODO: write a function to show the pattern name on the lcd screen for 2 sec
   
+  if (cptr.b2 != oldButtonValue ) {
+    oldButtonValue = cptr.b2;
+    if (cptr.b2 == 1) {
+      LEDCurPatterns = (LEDCurPatterns + 1) % NUM_OF_LED_PATTERNS;
+      // next funtion will return the pattern name
+      nextPattern(LEDCurPatterns);
+    }
   }
 
   setPixels(LEDCurPatterns);
@@ -305,23 +307,6 @@ void setupLED() {
   strip.begin();
   strip.show(); // Initialize all pixels to 'off'
 }
-//
-//void loopLED() {
-//  // Some example procedures showing how to display to the pixels:
-//  colorWipe(strip.Color(255, 0, 0), 50); // Red
-//  colorWipe(strip.Color(0, 255, 0), 50); // Green
-//  colorWipe(strip.Color(0, 0, 255), 50); // Blue
-////colorWipe(strip.Color(0, 0, 0, 255), 50); // White RGBW
-//  // Send a theater pixel chase in...
-//  theaterChase(strip.Color(127, 127, 127), 50); // White
-//  theaterChase(strip.Color(127, 0, 0), 50); // Red
-//  theaterChase(strip.Color(0, 0, 127), 50); // Blue
-//
-//  rainbow(20);
-//  rainbowCycle(20);
-//  theaterChaseRainbow(50);
-//}
-
 void setLEDDelayTimer(int wait) {
   LEDDelayTime = wait;
 }
@@ -347,7 +332,7 @@ void setPixels(int LEDPattern) {
         j = (j + 1) % 255;
         strip.show();
       }
-      setLEDDelayTimer(100);
+      setLEDDelayTimer(20);
       break;
     case 1:
       //RED
@@ -408,77 +393,6 @@ char* nextPattern(int LEDPattern) {
       return "LOL";
   }
 }
-
-// Fill the dots one after the other with a color
-void colorWipe(uint32_t c, uint8_t wait) {
-  for (uint16_t i = 0; i < strip.numPixels(); i++) {
-    strip.setPixelColor(i, c);
-    strip.show();
-    //delay(wait);
-  }
-}
-
-void rainbow(uint8_t wait) {
-  uint16_t i, j;
-
-  for (j = 0; j < 256; j++) {
-    for (i = 0; i < strip.numPixels(); i++) {
-      strip.setPixelColor(i, Wheel((i + j) & 255));
-    }
-    strip.show();
-    //delay(wait);
-  }
-}
-
-// Slightly different, this makes the rainbow equally distributed throughout
-void rainbowCycle(uint8_t wait) {
-  uint16_t i, j;
-
-  for (j = 0; j < 256 * 5; j++) { // 5 cycles of all colors on wheel
-    for (i = 0; i < strip.numPixels(); i++) {
-      strip.setPixelColor(i, Wheel(((i * 256 / strip.numPixels()) + j) & 255));
-    }
-    strip.show();
-    delay(wait);
-  }
-}
-
-//Theatre-style crawling lights.
-void theaterChase(uint32_t c, uint8_t wait) {
-  for (int j = 0; j < 10; j++) { //do 10 cycles of chasing
-    for (int q = 0; q < 3; q++) {
-      for (uint16_t i = 0; i < strip.numPixels(); i = i + 3) {
-        strip.setPixelColor(i + q, c);  //turn every third pixel on
-      }
-      strip.show();
-
-      delay(wait);
-
-      for (uint16_t i = 0; i < strip.numPixels(); i = i + 3) {
-        strip.setPixelColor(i + q, 0);      //turn every third pixel off
-      }
-    }
-  }
-}
-
-//Theatre-style crawling lights with rainbow effect
-void theaterChaseRainbow(uint8_t wait) {
-  for (int j = 0; j < 256; j++) {   // cycle all 256 colors in the wheel
-    for (int q = 0; q < 3; q++) {
-      for (uint16_t i = 0; i < strip.numPixels(); i = i + 3) {
-        strip.setPixelColor(i + q, Wheel( (i + j) % 255)); //turn every third pixel on
-      }
-      strip.show();
-
-      delay(wait);
-
-      for (uint16_t i = 0; i < strip.numPixels(); i = i + 3) {
-        strip.setPixelColor(i + q, 0);      //turn every third pixel off
-      }
-    }
-  }
-}
-
 // Input a value 0 to 255 to get a color value.
 // The colours are a transition r - g - b - back to r.
 uint32_t Wheel(byte WheelPos) {

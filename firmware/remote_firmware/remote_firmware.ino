@@ -32,7 +32,7 @@ struct Copter{
   int roll;
   int pitch;
   boolean b1;
-  boolean b2;
+  int b2;
   double pen1;
   double pen2;
   char errorCode[7];
@@ -108,8 +108,8 @@ void loop()
   btn1 = digitalRead(PIN_BTN1); 
   btn2 = digitalRead(PIN_BTN2);
   if( btn1 == 0 ) { buttonClicked1(); }
-  if( btn2 == 0 ) { buttonClicked2(); }
-
+  
+  rf_copter.b2 = btn2;
   pen1 = analogRead(PIN_POT1); 
   pen2 = analogRead(PIN_POT2);
   p1 = (((pen1 - POT_MIN) * (POT_MAXEW1)) / (POT_MAX - POT_MIN)) + POT_MINEW1;
@@ -140,20 +140,24 @@ void loop()
   lcd.print("r: "); lcd.print((signed)rf_copter.roll);
   lcd.print("  p: "); lcd.print((signed)rf_copter.pitch);
 
-  Serial.print("Throttle:");
-  Serial.print(rf_copter.throttle);
-  Serial.print("  Pitch:");
-  Serial.print(rf_copter.pitch);
-  Serial.print("  Yaw:");
-  Serial.print(rf_copter.yaw);
-  Serial.print("  Roll:");
-  Serial.print(rf_copter.roll);
-  Serial.print("  D:");
-  Serial.print(p1);
-  Serial.print("  P:");
-  Serial.println(p2);
-//  Serial.print("Button1:");
-//  Serial.println(rf_copter.b1);
+//  Serial.print("Throttle:");
+//  Serial.print(rf_copter.throttle);
+//  Serial.print("  Pitch:");
+//  Serial.print(rf_copter.pitch);
+//  Serial.print("  Yaw:");
+//  Serial.print(rf_copter.yaw);
+//  Serial.print("  Roll:");
+//  Serial.print(rf_copter.roll);
+//  Serial.print("  D:");
+//  Serial.print(p1);
+//  Serial.print("  P:");
+//  Serial.println(p2);
+  Serial.print("Button1:");
+  //Serial.print(btn1);
+  Serial.print(rf_copter.b1);
+  Serial.print("\tButton2:");
+  Serial.println(btn2);
+  //Serial.println(rf_copter.b2);
   strcpy(rf_copter.errorCode, error);
   rf_sent();
   
