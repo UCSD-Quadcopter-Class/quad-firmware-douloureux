@@ -1,4 +1,4 @@
-#include <serLCD.h>
+ #include <serLCD.h>
 #include "radio.h"
 #include "Adafruit_Simple_AHRS.h"
 #include <Wire.h>
@@ -38,10 +38,10 @@ double rollSum = 0;
 double rollAver;
 double pitchAver;
 
-double FR = 150;
-double FL = 150;
-double BR = 150;
-double BL = 150;
+double FR = 0;
+double FL = 0;
+double BR = 0;
+double BL = 0;
 
 struct Copter {
   int yaw;
@@ -109,17 +109,12 @@ double pitchAverage(double pitch, int index) {
   int i = 0;
   pitchSum = pitch + pitchSum - pitchHistory[index];
   pitchHistory[index]  = pitch;
-  //  for(; i < 10; i++){
-  //    Serial.print(pitchHistory[i]);
-  //    Serial.print("  ");
-  //  }
-  //  Serial.println("");
   return pitchSum / 10;
 }
-double rollAverage(double roll) {
-  rollSum = roll + rollSum - rollHistory[curRollHistoryIndex];
-  rollHistory[curRollHistoryIndex]  = roll;
-  curRollHistoryIndex == (curRollHistoryIndex + 1) % 10;
+double rollAverage(double roll, int index) {
+  int i = 0;
+  rollSum = roll + rollSum - rollHistory[index];
+  rollHistory[index]  = roll;
   return rollSum / 10;
 }
 
@@ -143,20 +138,20 @@ void pidCalculation(struct PIDController* pid, double* pidOutputs) {
 
     // Calculate I term
     pid[i].iTerm += error * pid[i].ki * duration;
-    if (pid[i].iTerm > 100) pid[i].iTerm = 100;
-    if (pid[i].iTerm < -100) pid[i].iTerm = -100;
+    //    if (pid[i].iTerm > 100) pid[i].iTerm = 100;
+    //    if (pid[i].iTerm < -100) pid[i].iTerm = -100;
     pidOutputs[i] += pid[i].iTerm * pid[i].ki;
 
     // Calculate D term
     pidOutputs[i] += (error - pid[i].lastError) * pid[i].kd / duration;
-    //
-    //    if (i == 2) {
-    //      Serial.print("\tError: "); Serial.print(error);
-    //      Serial.print("\tPterm: "); Serial.print(error * pid[i].kp);
-    //      //Serial.print("\tIterm: "); Serial.print(error * pid[i].iTerm);
-    //      Serial.print("\tDterm: "); Serial.print((error - pid[i].lastError) * pid[i].kd / duration);
-    //      Serial.print("\toutput: "); Serial.println(pidOutputs[i]);
-    //    }
+
+    if (i == 0) {
+      Serial.print("\tError: "); Serial.print(error);
+      Serial.print("\tPterm: "); Serial.print(error * pid[i].kp);
+      Serial.print("\tIterm: "); Serial.print(error * pid[i].iTerm);
+      Serial.print("\tDterm: "); Serial.print((error - pid[i].lastError) * pid[i].kd / duration);
+      Serial.print("\toutput: "); Serial.println(pidOutputs[i]);
+    }
     pid[i].lastError = error;
   }
   lastTime = millis();
@@ -169,17 +164,17 @@ void rf_receive() {
 
   if (strcmp(errorCode, temp.errorCode) == 0 && s == sizeof(Copter)) {
     cptr = temp;
-            Serial.print("y: "); Serial.print(cptr.yaw);
-            Serial.print("t: "); Serial.print(cptr.throttle);
-            Serial.print("r: "); Serial.print(cptr.roll);
-            Serial.print("p: "); Serial.print(cptr.pitch);
-            Serial.print("b1: "); Serial.print(cptr.b1);
-            Serial.print("b2: "); Serial.print(cptr.b2);
-            Serial.print("pen1: "); Serial.print(cptr.pen1);
-            Serial.print("pen2: "); Serial.println(cptr.pen2);
+    //    Serial.print("y: "); Serial.print(cptr.yaw);
+    //    Serial.print("t: "); Serial.print(cptr.throttle);
+    //    Serial.print("r: "); Serial.print(cptr.roll);
+    //    Serial.print("p: "); Serial.print(cptr.pitch);
+    //    Serial.print("b1: "); Serial.print(cptr.b1);
+    //    Serial.print("b2: "); Serial.print(cptr.b2);
+    //    Serial.print("pen1: "); Serial.print(cptr.pen1);
+    //    Serial.print("pen2: "); Serial.println(cptr.pen2);
   }
   else {
-        Serial.println("ERROR!!!!");
+    Serial.println("ERROR!!!!");
   }
 }
 
@@ -212,8 +207,10 @@ void loop() {
   lsm.getEvent(&a, &m, &g, &temp);
 
   setupPID_t(&(pid[0]), cptr.pen2, 0, cptr.pen1);
-  setupPID_t(&(pid[1]), 4.42, cptr.pen1, 0.73);
-  setupPID_t(&(pid[2]), 4.42, cptr.pen1, 0.73);
+  setupPID_t(&(pid[1]), 1.3, 0, 0.46);
+  setupPID_t(&(pid[2]), 0.65, 0, 0.45);
+
+
 
 
   float roll_g = g.gyro.x;
@@ -222,62 +219,59 @@ void loop() {
   double roll;
   double pitch;
   curPitchHistoryIndex = (curPitchHistoryIndex + 1) % 10;
+  curRollHistoryIndex = (curRollHistoryIndex + 1) % 10;
   pitchAver = pitchAverage(orientation.pitch, curPitchHistoryIndex);
-  roll = 0.97 * (pid[1].input - g.gyro.x * 0.01) + 0.03 * orientation.roll;
+  rollAver = rollAverage(orientation.roll, curRollHistoryIndex);
+  roll = 0.97 * (pid[1].input - g.gyro.x * 0.01) + 0.03 * rollAver;
   pitch = 0.97 * (pid[2].input - g.gyro.y * 0.01) + 0.03 * pitchAver;
 
 
-//  Serial.print("\t");
-//  Serial.println(g.gyro.z);
+  pid[0].input = g.gyro.z;
+  pid[1].input = roll;
+  pid[2].input = pitch;
 
-  pid[0].input = 0;
-  pid[1].input = 0;
-  pid[2].input = 0;
-
-  //pid[0].setPoint = cptr.yaw;
-  //pid[1].setPoint = cptr.pitch;
-  pid[2].setPoint = cptr.roll;
+  pid[0].setPoint = cptr.yaw;
+  pid[1].setPoint = 6.0 + cptr.roll;
+  pid[2].setPoint = -3.7 + cptr.pitch;
 
   // Serial.println(pid[2].setPoint);
-  //  pid[0].setPoint = 0;
-  //  pid[1].setPoint = 0;
-  //  pid[2].setPoint = 0;
 
-//    Serial.print("\tpen2: "); Serial.print(orientation.pitch);
-//    Serial.print("\tpen2: "); Serial.println(pitch);
+  //  Serial.print("\tpitch: "); Serial.print(orientation.pitch);
+  //  Serial.print("\tpitch_filterd: "); Serial.print(pitch);
+  //  Serial.print("\troll: "); Serial.print(orientation.roll);
+  //  Serial.print("\troll_filterd: "); Serial.println(roll);
 
   pidCalculation(pid, pidOutputs);
-  
-  FR = cptr.throttle + pidOutputs[2] + pidOutputs[1];
-  FL = cptr.throttle + pidOutputs[2] - pidOutputs[1];
-  BL = cptr.throttle - pidOutputs[2] - pidOutputs[1];
-  BR = cptr.throttle - pidOutputs[2] + pidOutputs[1];
-//
-//
-//
-//  if (FR > 250) FR = 250;
-//  if (FR < 0 ) FR = 0;
-//  if (BL > 250) BL = 250;
-//  if (BL < 0) BL = 0;
-//
-//  FL = FR;
-//  BR = BL;
 
+  BL = cptr.throttle - pidOutputs[2] + pidOutputs[1] + pidOutputs[0];
+  BR = cptr.throttle - pidOutputs[2] - pidOutputs[1] - pidOutputs[0];
+  FR = cptr.throttle + pidOutputs[2] - pidOutputs[1] + pidOutputs[0];
+  FL = cptr.throttle + pidOutputs[2] + pidOutputs[1] - pidOutputs[0];
+
+  BL = constrain(BL, 0 , 250);
+  BR = constrain(BR, 0 , 250);
+  FR = constrain(FR, 0 , 250);
+  FL = constrain(FL, 0 , 250);
+
+  //  Serial.print("\tFR: "); Serial.print(FR);
+  //  Serial.print("\tFL: "); Serial.print(FL);
+  //  Serial.print("\tBL: "); Serial.print(BL);
+  //  Serial.print("\tBR: "); Serial.println(BR);
 
   if (cptr.b1) {
-    analogWrite(PE5, FR ); //FR
-    analogWrite(PB5, FL); // FL
-    analogWrite(PE3, BL); //BL
+    analogWrite(PE3, FR ); //FR
+    analogWrite(PE5, FL); // FL
+    analogWrite(PB5, BL); //BL
     analogWrite(PE4, BR); //BR
   }
   else {
-    analogWrite(PE5, 0); //FR
-    analogWrite(PB5, 0); // FL
-    analogWrite(PE3, 0); //BL
+    analogWrite(PE3, 0 ); //FR
+    analogWrite(PE5, 0); // FL
+    analogWrite(PB5, 0); //BL
     analogWrite(PE4, 0); //BR
   }
   if (rfAvailable()) rf_receive();
-  
+
   if (cptr.b2 != oldButtonValue ) {
     oldButtonValue = cptr.b2;
     if (cptr.b2 == 1) {
@@ -370,7 +364,7 @@ void setPixels(int LEDPattern) {
       //Green
       if (LEDDelay()) {
         for (i = 0; i < strip.numPixels(); i++) {
-          strip.setPixelColor(i, strip.Color(0, 127, 0));
+          strip.setPixelColor(i, strip.Color(0, 0, 0));
         }
         strip.show();
       }
