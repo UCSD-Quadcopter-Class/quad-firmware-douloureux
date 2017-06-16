@@ -28,7 +28,7 @@
 #define POT_MINEW1  		0.0
 #define POT_MAXEW1 		1.0
 #define POT_MINEW2 		0.0
-#define POT_MAXEW2 		10.0
+#define POT_MAXEW2 		3.0
 
 
 #define THROTTLE_MIN 		116.0
@@ -41,9 +41,9 @@
 #define ROLL_MAX 		815.0
 
 #define THROTTLE_CONSTRAIN 	250.0
-#define PITCH_CONSTRAIN 	5.0
-#define YAW_CONSTRAIN 		5.0
-#define ROLL_CONSTRAIN 		5.0
+#define PITCH_CONSTRAIN 	20.0
+#define YAW_CONSTRAIN 		20.0
+#define ROLL_CONSTRAIN 		20.0
 
 #define YAW_MIDPOINT		483.0
 #define ROLL_MIDPOINT		504.0
